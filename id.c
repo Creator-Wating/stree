@@ -5,7 +5,7 @@
 int main(void) {
   DIR *d;
   struct dirent *dir;
-  d = opendir("/mnt/d/pstree/os-workbench");
+  d = opendir("/proc");
   if (d != NULL) {
     while ((dir = readdir(d)) != NULL ) {
         if (opendir (dir->d_name) != NULL && isdigit(*dir->d_name) )
