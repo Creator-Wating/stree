@@ -6,42 +6,6 @@ static char *WhatString[]= {
 
 #define MAXLINE 8192
 
-#if defined(_AIX) || defined(___AIX)	/* AIX >= 3.1 */
-/* Under AIX, we directly read the process table from the kernel */
-# ifndef _AIX50
-/* problems with getprocs() under AIX 5L
- * workaround contributed by Chris Benesch <chris AT fdbs.com> */
-#  define USE_GetProcessesDirect
-# endif /*_AIX50*/
-#  define HAS_TERMDEF
-extern char *termdef(int, char);
-#  define _ALL_SOURCE
-#  include <procinfo.h>
-#  define USE_GETPROCS
-
-#  ifdef USE_GETPROCS
-#    define IFNEW(a,b) a
-#    define ProcInfo procsinfo
-extern getprocs(struct procsinfo *, int, struct fdsinfo *, int, pid_t *, int);
-#  else /*USE_GETPROCS*/
-#    define IFNEW(a,b) b
-#    define ProcInfo procinfo
-extern getproc(struct procinfo *, int, int);
-extern getuser(struct procinfo *, int, void *, int);
-#  endif /*USE_GETPROCS*/
-
-extern getargs(struct ProcInfo *, int, char *, int);
-
-/*#  define PSCMD 	"ps -ekf"
-  #  define PSFORMAT 	"%s %ld %ld %*20c %*s %[^\n]"*/
-#  define HAS_PGID
-#  define UID2USER
-#  define PSCMD 	"ps -eko uid,pid,ppid,pgid,thcount,args"
-#  define PSFORMAT 	"%ld %ld %ld %ld %ld %[^\n]"
-#  define PSVARS	&P[i].uid, &P[i].pid, &P[i].ppid, &P[i].pgid, &P[i].thcount, P[i].cmd
-#  define PSVARSN	6
-/************************************************************************/
-#elif defined(__linux) || (defined __alpha && defined(_SYSTYPE_BSD) || defined (Tru64))
 /* TRU64 contributed by Frank Parkin <fparki AT acxiom.co.uk>
  */
 #  ifdef __linux
@@ -55,96 +19,15 @@ extern getargs(struct ProcInfo *, int, char *, int);
 #  define PSFORMAT 	"%ld %ld %ld %ld %[^\n]"
 #  define PSVARS	&P[i].uid, &P[i].pid, &P[i].ppid, &P[i].pgid, P[i].cmd
 #  define PSVARSN	5
-/************************************************************************/
-#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__APPLE__)
-/* NetBSD contributed by Gary D. Duzan <gary AT wheel.tiac.net>
- * FreeBSD contributed by Randall Hopper <rhh AT ct.picker.com> 
- * Darwin / Mac OS X patch by Yuji Yamano <yyamano AT kt.rim.or.jp>
- * wide output format fix for NetBSD by Jeff Brown <jabrown AT caida.org>
- * (Net|Open|Free)BSD & Darwin merged by Ralf Meyer <ralf AT thp.Uni-Duisburg.DE>
- */
-#  define HAS_PGID
-#  define PSCMD 	"ps -axwwo user,pid,ppid,pgid,command"
-#  define PSFORMAT 	"%s %ld %ld %ld %[^\n]"
-#  define PSVARS	P[i].name, &P[i].pid, &P[i].ppid, &P[i].pgid, P[i].cmd
-#  define PSVARSN	5
-#  define ZOMBIES_HAVE_PID_0
-/************************************************************************/
-#elif defined(sun) && (!defined(__SVR4)) /* Solaris 1.x */
-/* contributed by L. Mark Larsen <mlarsen AT ptdcs2.intel.com> */
-/* new cpp criteria by Pierre Belanger <belanger AT risq.qc.ca> */
-#  define solaris1x
-#  define UID2USER
-#  ifdef mc68000
-/* contributed by Paul Kern <pkern AT utcc.utoronto.ca> */
-#    define PSCMD 	"ps laxw"
-#    define PSFORMAT 	"%*7c%ld %ld %ld %*d %*d %*d %*x %*d %*d %*x %*14c %[^\n]"
-#    define uid_t	int
-#    define NEED_STRSTR
-#  else
-#    define PSCMD 	"ps jaxw"
-#    define PSFORMAT 	"%ld %ld %*d %*d %*s %*d %*s %ld %*s %[^\n]"
-#    define PSVARS 	&P[i].ppid, &P[i].pid, &P[i].uid, P[i].cmd
-#    define PSVARSN	4
-#  endif
-/************************************************************************/
-#elif defined(sun) && (defined(__SVR4)) /* Solaris 2.x */
-/* contributed by Pierre Belanger <belanger AT risq.qc.ca> */
-#  define solaris2x
-#  define PSCMD         "ps -ef"
-#  define PSFORMAT      "%s %ld %ld %*d %*s %*s %*s %[^\n]"
-/************************************************************************/
-#elif defined(bsdi)
-/* contributed by Dean Gaudet <dgaudet AT hotwired.com> */
-#  define UID2USER
-#  define PSCMD 	"ps laxw"
-#  define PSFORMAT 	"%ld %ld %ld %*d %*d %*d %*d %*d %*s %*s %*s %*s %[^\n]"
-/************************************************************************/
-#elif defined(_BSD)	/* Untested */
-#  define UID2USER
-#  define PSCMD 	"ps laxw"
-#  define PSFORMAT 	"%*d %*c %ld %ld %ld %*d %*d %*d %*x %*d %d %*15c %*s %[^\n]"
-/************************************************************************/
-#elif defined(__convex)	/* ConvexOS */
-#  define UID2USER
-#  define PSCMD 	"ps laxw"
-#  define PSFORMAT 	"%*s %ld %ld %ld %*d %*g %*d %*d %*21c %*s %[^\n]"
-/************************************************************************/
-#else			/* HP-UX, A/UX etc. */
-#  define PSCMD 	"ps -ef"
-#  define PSFORMAT 	"%s %ld %ld %*20c %*s %[^\n]"
-#endif
-/*********************** end of configurable part ***********************/
-
-#ifndef PSVARS 		/* Set default */
-# ifdef UID2USER
-#  define PSVARS	&P[i].uid, &P[i].pid, &P[i].ppid, P[i].cmd
-# else
-#  define PSVARS	P[i].name, &P[i].pid, &P[i].ppid, P[i].cmd
-# endif
-# define PSVARSN	4
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>		/* For str...() */
-#ifdef NEED_SNPRINTF
-#include <stdarg.h>
-int snprintf(char *, int, char *, ...);
-#endif
 #include <unistd.h>		/* For getopt() */
 #include <pwd.h>		/* For getpwnam() */
 
 #include <sys/ioctl.h>		/* For TIOCGSIZE/TIOCGWINSZ */
 /* #include <termios.h> */
-
-#ifdef DEBUG
-# include <errno.h>
-#endif
-
-#ifdef NEED_STRSTR
-static char *strstr(char *, char *);
-#endif
 
 #ifndef TRUE
 #define TRUE  1
@@ -255,120 +138,6 @@ void uid2user(uid_t uid, char *name, int len) {
   name[len-1] = '\0';
 }
 #endif
-
-#if defined(_AIX) || defined(___AIX)	/* AIX 3.x / 4.x */
-int GetProcessesDirect(void) {
-  int i, nproc, maxnproc = 1024;
-  
-  struct ProcInfo *proc;
-  int idx;
-#ifndef USE_GETPROCS
-  struct userinfo user;
-#endif
-  
-  do {
-    proc = malloc(maxnproc * sizeof(struct ProcInfo));
-    if (proc == NULL) {
-      fprintf(stderr, "Problems with malloc.\n");
-      exit(1);
-    }
-    
-    /* Get process table */
-    idx = 0;
-    nproc = IFNEW(getprocs(proc, sizeof(struct procsinfo), NULL, 0,
-			   &idx, maxnproc),
-		  getproc(proc, maxnproc, sizeof(struct procinfo))
-		  );
-#ifdef DEBUG
-    idx = errno; /* Don't ask... */
-    if (debug)
-      fprintf(stderr,
-	      "nproc = %d maxnproc = %d" IFNEW(" idx = %d ","") "\n",
-	      nproc, maxnproc, idx);
-    errno = idx;
-#endif
-#ifdef USE_GETPROCS
-    if (nproc == -1) {
-      perror("getprocs");
-      exit(1);
-    } else if (nproc == maxnproc) {
-      nproc = -1;
-    }
-#endif
-    if (nproc == -1) {
-      free(proc);
-      maxnproc *= 2;
-    } 
-  } while (nproc == -1);
-  
-  P = malloc((nproc+1) * sizeof(struct Proc));
-  if (P == NULL) {
-    fprintf(stderr, "Problems with malloc.\n");
-    exit(1);
-  }
-  
-  for (i = 0; i < nproc; i++) {
-#ifndef USE_GETPROCS
-    getuser(&proc[i],sizeof(struct procinfo),
-	    &user,   sizeof(struct userinfo));
-#endif
-    P[i].uid     = proc[i].pi_uid;
-    P[i].pid     = proc[i].pi_pid;
-    P[i].ppid    = proc[i].pi_ppid;
-    P[i].pgid    = proc[i].pi_pgrp;
-    P[i].thcount = IFNEW(proc[i].pi_thcount, 1);
-    
-    uid2user(P[i].uid, P[i].name, sizeof(P[i].name));
-    
-    if (IFNEW(proc[i].pi_state,proc[i].pi_stat) == SZOMB) {
-      strcpy(P[i].cmd, "<defunct>");
-    } else {
-      char *c = P[i].cmd;
-      int ci = 0;
-      getargs(&proc[i], sizeof(struct procinfo), c, MAXLINE - 2);
-      c[MAXLINE-2] = c[MAXLINE-1] = '\0';
-
-      /* Collect args. Stop when we encounter two '\0' */
-      while (c[ci] != '\0' && (ci += strlen(&c[ci])) < MAXLINE - 2)
-	c[ci++] = ' ';
-      
-      /* Drop trailing blanks */
-      ci = strlen(c);
-      while (ci > 0 && c[ci-1] == ' ') ci--;
-      c[ci] = '\0';
-      
-      /* Replace some unprintables with '?' */
-      for (ci = 0; c[ci] != '\0'; ci++)
-	if (c[ci] == '\n' || c[ci] == '\t') c[ci] = '?';
-      
-      /* Insert [ui_comm] when getargs returns nothing */
-      if (c[0] == '\0') {
-	int l = strlen(IFNEW(proc[i].pi_comm,user.ui_comm));
-	c[0] = '[';
-	strcpy(c+1, IFNEW(proc[i].pi_comm,user.ui_comm));
-	c[l+1] = ']';
-	c[l+2] = '\0';
-      }
-    }
-#ifdef DEBUG
-    if (debug)
-      fprintf(stderr,
-	      "%d: uid=%5ld, name=%8s, pid=%5ld, ppid=%5ld, pgid=%5ld, tsize=%7u, dvm=%4u, "
-	      "thcount=%2d, cmd[%d]='%s'\n",
-	      i, P[i].uid, P[i].name, P[i].pid, P[i].ppid, P[i].pgid,
-	      IFNEW(proc[i].pi_tsize,user.ui_tsize),
-	      IFNEW(proc[i].pi_dvm,user.ui_dvm),
-	      proc[i].pi_thcount,
-	      strlen(P[i].cmd),P[i].cmd);
-#endif
-    P[i].parent = P[i].child = P[i].sister = -1;
-    P[i].print = FALSE;
-  }
-  free(proc);
-  return nproc;
-}
-
-#endif /* _AIX */
 
 #ifdef __linux
 int GetProcessesDirect(void) {
@@ -919,36 +688,3 @@ int main(int argc, char **argv) {
   free(P);
   return 0;
 }
-
-#ifdef NEED_STRSTR
-/* Contributed by Paul Kern <pkern AT utcc.utoronto.ca> */
-static char * strstr(s1, s2)
-     register char *s1, *s2;
-{
-  register int n1, n2;
-  
-  if (n2 = strlen(s2))
-    for (n1 = strlen(s1); n1 >= n2; s1++, n1--)
-      if (strncmp(s1, s2, n2) == 0)
-	return s1;
-  return NULL;
-}
-#endif /* NEED_STRSTR */
-
-#ifdef NEED_SNPRINTF
-/* Contributed by Michael E White */
-int snprintf(char *name, int namesiz, char *format, ...)
-{
-  int retval;
-  char bigbuf[1024] = {'\0'};  
-  va_list ap;
-  va_start(ap, format);
-  retval = vsprintf(bigbuf,format,ap);
-  va_end(ap);
-  if (retval > namesiz) retval = namesiz;
-  strncpy(name, bigbuf, retval);
-  name[retval] = '\0';
-  return retval;
-}
-#endif  /* NEED_SNPRINTF */
-
